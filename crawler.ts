@@ -1,55 +1,56 @@
 import { NS } from "@ns";
 
-const unvisited: string[] = ['home']
+const unvisited: Array<string> = ['home']
 const visited = new Set<string>()
-const unhackable = new Set<string>()
+
+const hackable = new Set<string>()
+const unhackable = new Array<string>()
+
+let highestMoneyHost: string;
 
 /** @param {NS} ns */
 export async function main(ns: NS) {
-    while (unvisited.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const host: string = unvisited.pop()!;
-        ns.print(`Current host: ${host}`);
+    await traverseNetwork(ns, unvisited);
 
-        scanAll(ns, host);
+    await infectAll(ns, hackable, highestMoneyHost);
 
-        const hasRootAccess = attemptRootAccess(ns, host);
-        await attemptRunMoneyScript(ns, host, hasRootAccess)
-
-        await ns.sleep(50);
-    }
-
-    const unhackableList = Array.from(unhackable)
-    ns.print(`No more servers to hack. Unhackable servers: ${Array.from(unhackable).join('\n')}`)
-
-    while (unhackableList.length > 0) {
-        for (const host of unhackableList) {
-            const hasRootAccess = attemptRootAccess(ns, host);
-            
-            await attemptRunMoneyScript(ns, host, hasRootAccess)
-            await ns.sleep(50);
-        }
-    }
+    await traverseNetwork(ns, unhackable, true);
 }
 
-/** @param {NS} ns */
-function scanAll(ns: NS, host: string) {
-    ns.print(`Scanning: ${host}`)
+async function traverseNetwork(ns: NS, nodes: Array<string>, retriggerInfection=false) {
+    while (nodes.length > 0) {
+        await ns.sleep(50);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const host: string = nodes.pop()!;
+        ns.print(`Traversal current host: ${host}`);
 
-    visited.add(host)
+        if (host != 'home') {
+            const isHackable = attemptHack(ns, host);
+            if (isHackable) {
+                hackable.add(host);
+                if (updateHighestMoneyHost(ns, host) && retriggerInfection) {
+                    await infectAll(ns, hackable, highestMoneyHost)
+                }
+            } else {
+                unhackable.unshift(host)  // lmao inefficient AF
+            }
+        }
 
-    const neighbors = ns.scan(host);
-    for (const n_host of neighbors) {
-        if (visited.has(n_host) || unhackable.has(n_host)) {
+        if (visited.has(host)) {
             continue;
         }
-        unvisited.push(n_host);
-    }
-}
 
-/** @param {NS} ns */
+        visited.add(host)
+        const neighbors = ns.scan(host);
+        for (const n_host of neighbors) {
+            nodes.push(n_host);
+        }
+    }
+    ns.print(`No more servers to traverse. Unhackable servers: ${unhackable.join('\n')}`)
+}
+1
 function attemptRootAccess(ns: NS, host: string) {
-    ns.print(`Attempting Root Access on: ${host}`)
+    ns.print(`Attempting root access on: ${host}`)
     if (ns.hasRootAccess(host)) {
         return true;
     }
@@ -59,13 +60,11 @@ function attemptRootAccess(ns: NS, host: string) {
     try {
         ns.nuke(host);
     } catch {
-        unhackable.add(host);
         return false;
     }
     return true;
 }
 
-/** @param {NS} ns */
 function openAllPorts(ns: NS, host: string) {
     ns.print(`Opening ports on ${host}`)
 
@@ -91,35 +90,58 @@ function openAllPorts(ns: NS, host: string) {
     }
 }
 
-async function attemptRunMoneyScript(ns: NS, host: string, hasRootAccess: boolean) {
-    if (hasRootAccess && host != 'home') {
-        if (ns.getHackingLevel() >= ns.getServerRequiredHackingLevel(host)) {
-            await runMoneyScript(ns, host);
-        }
+function updateHighestMoneyHost(ns: NS, host: string) {
+    if (highestMoneyHost && ns.getServerMaxMoney(host) <= ns.getServerMaxMoney(highestMoneyHost)) {
+        return false;
+    }
+    highestMoneyHost = host;
+    return true;
+}
+
+async function infectAll(ns: NS, hackableHosts: Iterable<string>, target?: string, malware?: string) {
+    ns.print(`Infecting all hackable servers...`);
+    for (const host of hackableHosts) {
+        if (!target) target = host
+        infect(ns, host, target, malware);
     }
 }
 
-/** @param {NS} ns */
-async function runMoneyScript(ns: NS, host: string) {
-    ns.print(`Running moneyScript on: ${host}`);
+async function infect(ns: NS, host: string, target: string, malware='moneyScript.js') {
+    ns.print(`Infecting: ${host}`);
+    
+    ns.kill(malware, host);
+    await ns.scp(malware, host);
 
-    const script = 'moneyScript.js';
-
-    await ns.scp(script, host);
-
-    const maxRam = ns.getServerMaxRam(host);
-    const usedRam = ns.getServerUsedRam(host);
-    const scriptRam = ns.getScriptRam(script);
-
-    const numThreads = Math.trunc((maxRam - usedRam) / scriptRam);
-
-    if (numThreads > 0) {
-        const highestMoneyHost = 'phantasy';
-
-        if (ns.hasRootAccess(highestMoneyHost) && ns.getHackingLevel() >= ns.getServerRequiredHackingLevel(highestMoneyHost)) {
-            ns.exec(script, host, numThreads, highestMoneyHost);
-        } else {
-            ns.exec(script, host, numThreads, host);
-        }
+    const numThreads = getNumExecutableThreads(ns, host, malware)
+    if (numThreads <= 0) {
+        return;
     }
+
+    if (isHackable(ns, target)) {
+        ns.exec(malware, host, numThreads, target);
+    } else {
+        ns.exec(malware, host, numThreads, host);
+    }
+}
+
+function getNumExecutableThreads(ns: NS, host: string, malware: string) {
+    return Math.trunc((ns.getServerMaxRam(host) - ns.getServerUsedRam(host)) / ns.getScriptRam(malware));
+}
+
+function attemptHack(ns: NS, host: string) {
+    if (ns.getHackingLevel() < ns.getServerRequiredHackingLevel(host)) {
+        ns.print(`Unable to hack ${host} due to insufficient hacking level`);
+        return false;
+    }
+
+    if (attemptRootAccess(ns, host)) {
+        ns.print(`Successfully obtained root access for ${host}`);
+        return true;
+    }
+    ns.print(`Unable obtain root access for ${host}`);
+    return false;
+}
+
+function isHackable(ns: NS, host: string) {
+    return ns.hasRootAccess(host) && ns.getHackingLevel() >= ns.getServerRequiredHackingLevel(host);
 }
