@@ -14,15 +14,22 @@ export async function main(ns: NS) {
         scanAll(ns, host);
 
         const hasRootAccess = attemptRootAccess(ns, host);
-        if (hasRootAccess && host != 'home') {
-            if (ns.getHackingLevel() >= ns.getServerRequiredHackingLevel(host)) {
-                await runMoneyScript(ns, host);
-            }
-        }
+        await attemptRunMoneyScript(ns, host, hasRootAccess)
 
-        await ns.sleep(100);
+        await ns.sleep(50);
     }
+
+    const unhackableList = Array.from(unhackable)
     ns.print(`No more servers to hack. Unhackable servers: ${Array.from(unhackable).join('\n')}`)
+
+    while (unhackableList.length > 0) {
+        for (const host of unhackableList) {
+            const hasRootAccess = attemptRootAccess(ns, host);
+            
+            await attemptRunMoneyScript(ns, host, hasRootAccess)
+            await ns.sleep(50);
+        }
+    }
 }
 
 /** @param {NS} ns */
@@ -47,7 +54,7 @@ function attemptRootAccess(ns: NS, host: string) {
         return true;
     }
 
-    hackAll(ns, host);
+    openAllPorts(ns, host);
 
     try {
         ns.nuke(host);
@@ -59,7 +66,7 @@ function attemptRootAccess(ns: NS, host: string) {
 }
 
 /** @param {NS} ns */
-function hackAll(ns: NS, host: string) {
+function openAllPorts(ns: NS, host: string) {
     ns.print(`Opening ports on ${host}`)
 
     if (ns.fileExists('BruteSSH.exe')) {
@@ -84,6 +91,14 @@ function hackAll(ns: NS, host: string) {
     }
 }
 
+async function attemptRunMoneyScript(ns: NS, host: string, hasRootAccess: boolean) {
+    if (hasRootAccess && host != 'home') {
+        if (ns.getHackingLevel() >= ns.getServerRequiredHackingLevel(host)) {
+            await runMoneyScript(ns, host);
+        }
+    }
+}
+
 /** @param {NS} ns */
 async function runMoneyScript(ns: NS, host: string) {
     ns.print(`Running moneyScript on: ${host}`);
@@ -99,6 +114,12 @@ async function runMoneyScript(ns: NS, host: string) {
     const numThreads = Math.trunc((maxRam - usedRam) / scriptRam);
 
     if (numThreads > 0) {
-        ns.exec(script, host, numThreads, host);
+        const highestMoneyHost = 'phantasy';
+
+        if (ns.getHackingLevel() >= ns.getServerRequiredHackingLevel(highestMoneyHost)) {
+            ns.exec(script, host, numThreads, highestMoneyHost);
+        } else {
+            ns.exec(script, host, numThreads, host);
+        }
     }
 }
