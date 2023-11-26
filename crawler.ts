@@ -116,7 +116,7 @@ async function runMoneyScript(ns: NS, host: string) {
     if (numThreads > 0) {
         const highestMoneyHost = 'phantasy';
 
-        if (ns.getHackingLevel() >= ns.getServerRequiredHackingLevel(highestMoneyHost)) {
+        if (ns.hasRootAccess(highestMoneyHost) && ns.getHackingLevel() >= ns.getServerRequiredHackingLevel(highestMoneyHost)) {
             ns.exec(script, host, numThreads, highestMoneyHost);
         } else {
             ns.exec(script, host, numThreads, host);
