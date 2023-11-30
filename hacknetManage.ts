@@ -18,7 +18,7 @@ function buyMoreNodes(ns: NS) {
     }
 
     currMoney = ns.getServerMoneyAvailable('home');
-    if (ns.hacknet.getPurchaseNodeCost() > currMoney / 100) {
+    if (ns.hacknet.getPurchaseNodeCost() > currMoney / 10) {
         return; 
     }
     ns.hacknet.purchaseNode();
