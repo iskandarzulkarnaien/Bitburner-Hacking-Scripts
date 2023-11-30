@@ -6,6 +6,8 @@ const visited = new Set<string>()
 const hackable = new Set<string>()
 const unhackable = new Array<string>()
 
+const running = new Map<string, string>()
+
 let highestMoneyHost: string;
 
 /** @param {NS} ns */
@@ -28,7 +30,8 @@ async function traverseNetwork(ns: NS, nodes: Array<string>, retriggerInfection=
             const isHackable = attemptHack(ns, host);
             if (isHackable) {
                 hackable.add(host);
-                if (updateHighestMoneyHost(ns, host) && retriggerInfection) {
+                // TODO: If not highest money, but retrigger, just infect that one node
+                if (updateHighestMoneyHost(ns, host) || retriggerInfection) {
                     await infectAll(ns, hackable, highestMoneyHost)
                 }
             } else {
@@ -78,7 +81,6 @@ function openAllPorts(ns: NS, host: string) {
 
     if (ns.fileExists('relaySMTP.exe')) {
         ns.relaysmtp(host);
-
     }
 
     if (ns.fileExists('HTTPWorm.exe')) {
@@ -101,15 +103,21 @@ function updateHighestMoneyHost(ns: NS, host: string) {
 async function infectAll(ns: NS, hackableHosts: Iterable<string>, target?: string, malware?: string) {
     ns.print(`Infecting all hackable servers...`);
     for (const host of hackableHosts) {
-        if (!target) target = host
+        if (!target) target = host;
         infect(ns, host, target, malware);
     }
 }
 
-async function infect(ns: NS, host: string, target: string, malware='moneyScript.js') {
+async function infect(ns: NS, host: string, target: string, malware='/malware/moneyScript.js') {
     ns.print(`Infecting: ${host}`);
     
-    ns.kill(malware, host);
+    // TODO: If the script and params are exactly the same, do not kill
+    const currentTarget = running.get(host);
+    if (currentTarget) {
+        ns.kill(malware, host, currentTarget);
+    } else {
+        ns.kill(malware, host);
+    }
     await ns.scp(malware, host);
 
     const numThreads = getNumExecutableThreads(ns, host, malware)
@@ -118,8 +126,10 @@ async function infect(ns: NS, host: string, target: string, malware='moneyScript
     }
 
     if (isHackable(ns, target)) {
+        running.set(host, target)
         ns.exec(malware, host, numThreads, target);
     } else {
+        running.set(host, host)
         ns.exec(malware, host, numThreads, host);
     }
 }
