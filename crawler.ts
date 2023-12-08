@@ -56,7 +56,7 @@ async function traverseNetwork(ns: NS, nodes: Array<string>, triggerInfection=fa
     }
     ns.print(`No more servers to traverse. Unhackable servers: ${unhackable.join('\n')}`)
 }
-1
+
 function attemptRootAccess(ns: NS, host: string) {
     ns.print(`Attempting root access on: ${host}`)
     if (ns.hasRootAccess(host)) {
