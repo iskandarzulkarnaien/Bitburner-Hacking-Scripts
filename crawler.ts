@@ -19,7 +19,7 @@ export async function main(ns: NS) {
     await traverseNetwork(ns, unhackable, true);
 }
 
-async function traverseNetwork(ns: NS, nodes: Array<string>, retriggerInfection=false) {
+async function traverseNetwork(ns: NS, nodes: Array<string>, triggerInfection=false) {
     while (nodes.length > 0) {
         await ns.sleep(50);
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -30,9 +30,14 @@ async function traverseNetwork(ns: NS, nodes: Array<string>, retriggerInfection=
             const isHackable = attemptHack(ns, host);
             if (isHackable) {
                 hackable.add(host);
-                // TODO: If not highest money, but retrigger, just infect that one node
-                if (updateHighestMoneyHost(ns, host) || retriggerInfection) {
-                    await infectAll(ns, hackable, highestMoneyHost)
+
+                const foundBetterHost = updateHighestMoneyHost(ns, host);
+                if (triggerInfection) {
+                    if (foundBetterHost) {
+                        await infectAll(ns, hackable, highestMoneyHost)
+                    } else {
+                        await infect(ns, host, highestMoneyHost);
+                    }
                 }
             } else {
                 unhackable.unshift(host)  // lmao inefficient AF
@@ -113,10 +118,8 @@ async function infect(ns: NS, host: string, target: string, malware='/malware/mo
     
     // TODO: If the script and params are exactly the same, do not kill
     const currentTarget = running.get(host);
-    if (currentTarget) {
-        ns.kill(malware, host, currentTarget);
-    } else {
-        ns.kill(malware, host);
+    if (currentTarget != target) {
+        ns.killall(host);
     }
     await ns.scp(malware, host);
 
