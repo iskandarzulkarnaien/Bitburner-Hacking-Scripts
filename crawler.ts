@@ -43,18 +43,23 @@ async function traverseNetwork(ns: NS, nodes: Array<string>, triggerInfection=fa
                 unhackable.unshift(host)  // lmao inefficient AF
             }
         }
-
-        if (visited.has(host)) {
-            continue;
-        }
-
-        visited.add(host)
-        const neighbors = ns.scan(host);
-        for (const n_host of neighbors) {
-            nodes.push(n_host);
-        }
+        if (!scanNeighbors) continue;
     }
     ns.print(`No more servers to traverse. Unhackable servers: ${unhackable.join('\n')}`)
+}
+
+
+function scanNeighbors(ns: NS, host: string, nodes: Array<string>) {
+    if (visited.has(host)) {
+        return false;
+    }
+
+    visited.add(host)
+    const neighbors = ns.scan(host);
+    for (const n_host of neighbors) {
+        nodes.push(n_host);
+    }
+    return true;
 }
 
 function attemptRootAccess(ns: NS, host: string) {
@@ -142,7 +147,7 @@ function getNumExecutableThreads(ns: NS, host: string, malware: string) {
 }
 
 function attemptHack(ns: NS, host: string) {
-    if (ns.getHackingLevel() < ns.getServerRequiredHackingLevel(host)) {
+    if (!isHackable) {
         ns.print(`Unable to hack ${host} due to insufficient hacking level`);
         return false;
     }
@@ -156,5 +161,5 @@ function attemptHack(ns: NS, host: string) {
 }
 
 function isHackable(ns: NS, host: string) {
-    return ns.hasRootAccess(host) && ns.getHackingLevel() >= ns.getServerRequiredHackingLevel(host);
+    return ns.getHackingLevel() >= ns.getServerRequiredHackingLevel(host);
 }
