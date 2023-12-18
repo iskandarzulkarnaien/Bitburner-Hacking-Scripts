@@ -1,4 +1,5 @@
 import { NS } from "@ns";
+import { execMaxOn, getMaxMoneyHost, setMaxMoneyHost } from "./lib/helpers";
 
 const unvisited: Array<string> = ['home']
 const visited = new Set<string>()
@@ -8,13 +9,13 @@ const unhackable = new Array<string>()
 
 const running = new Map<string, string>()
 
-let highestMoneyHost: string;
+const defaultMalware = '/malware/hackScript.js'
 
 /** @param {NS} ns */
 export async function main(ns: NS) {
     await traverseNetwork(ns, unvisited);
 
-    await infectAll(ns, nukedHosts, highestMoneyHost);
+    await infectAll(ns, nukedHosts, getMaxMoneyHost(ns));
 
     await traverseNetwork(ns, unhackable, true);
 }
@@ -24,7 +25,7 @@ async function traverseNetwork(ns: NS, nodes: Array<string>, triggerInfection=fa
         await ns.sleep(50);
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const host: string = nodes.pop()!;
-        ns.print(`Traversal current host: ${host}`);
+        // ns.print(`Traversal current host: ${host}`);
 
         if (host != 'home') {
             const hasRootAccess = attemptRootAccess(ns, host);
@@ -34,9 +35,9 @@ async function traverseNetwork(ns: NS, nodes: Array<string>, triggerInfection=fa
                 const foundBetterHost = updateHighestMoneyHost(ns, host);
                 if (triggerInfection) {
                     if (foundBetterHost) {
-                        await infectAll(ns, nukedHosts, highestMoneyHost)
+                        await infectAll(ns, nukedHosts, getMaxMoneyHost(ns))
                     } else {
-                        await infect(ns, host, highestMoneyHost);
+                        await infect(ns, host, getMaxMoneyHost(ns));
                     }
                 }
             } else {
@@ -45,12 +46,12 @@ async function traverseNetwork(ns: NS, nodes: Array<string>, triggerInfection=fa
         }
         if (!scanNeighbors(ns, host, nodes)) continue;
     }
-    ns.print(`No more servers to traverse. Unhackable servers: ${unhackable.join('\n')}`)
+    // ns.print(`No more servers to traverse. Unhackable servers: ${unhackable.join('\n')}`)
 }
 
 
 function scanNeighbors(ns: NS, host: string, nodes: Array<string>) {
-    ns.print(`Scanning neighbors of ${host}`)
+    // ns.print(`Scanning neighbors of ${host}`)
     if (visited.has(host)) {
         return false;
     }
@@ -58,14 +59,14 @@ function scanNeighbors(ns: NS, host: string, nodes: Array<string>) {
     visited.add(host)
     const neighbors = ns.scan(host);
     for (const n_host of neighbors) {
-        ns.print(`Adding neighbor ${n_host} of ${host}`)
+        // ns.print(`Adding neighbor ${n_host} of ${host}`)
         nodes.push(n_host);
     }
     return true;
 }
 
 function attemptRootAccess(ns: NS, host: string) {
-    ns.print(`Attempting root access on: ${host}`)
+    // ns.print(`Attempting root access on: ${host}`)
     if (ns.hasRootAccess(host)) {
         return true;
     }
@@ -81,7 +82,7 @@ function attemptRootAccess(ns: NS, host: string) {
 }
 
 function openAllPorts(ns: NS, host: string) {
-    ns.print(`Opening ports on ${host}`)
+    // ns.print(`Opening ports on ${host}`)
 
     if (ns.fileExists('BruteSSH.exe')) {
         ns.brutessh(host);
@@ -107,23 +108,30 @@ function openAllPorts(ns: NS, host: string) {
 function updateHighestMoneyHost(ns: NS, host: string) {
     if (!isHackable(ns, host)) return false;
 
-    if (!highestMoneyHost || ns.getServerMaxMoney(host) > ns.getServerMaxMoney(highestMoneyHost)) {
-        highestMoneyHost = host;
+    if (!getMaxMoneyHost(ns) || ns.getServerMaxMoney(host) > ns.getServerMaxMoney(getMaxMoneyHost(ns))) {
+        setMaxMoneyHost(ns, host)
         return true;
     }
     return false;
 }
 
-async function infectAll(ns: NS, hackableHosts: Iterable<string>, target?: string, malware?: string) {
-    ns.print(`Infecting all nuked servers...`);
+async function infectAll(ns: NS, hackableHosts: Iterable<string>, target: string, malware?: string) {
+    // ns.print(`Infecting all nuked servers...`);
+    infectHome(ns, target)
     for (const host of hackableHosts) {
-        if (!target) target = host;
         infect(ns, host, target, malware);
     }
 }
 
-async function infect(ns: NS, host: string, target: string, malware='/malware/moneyScript.js') {
-    ns.print(`Infecting: ${host}`);
+async function infectHome(ns: NS, target: string, malware=defaultMalware) {
+    const reservedRam = ['crawler.js', 'serverManage.js', 'shareScript.js', 'playScript.js', 'hacknetManage.js']
+                            .map((script) => ns.getScriptRam(script))
+                            .reduce((initRam, scriptRam) => initRam + scriptRam, 0)
+    execMaxOn(ns, 'home', malware, target, getNumExecutableThreads(ns, 'home', malware, reservedRam))
+}
+
+async function infect(ns: NS, host: string, target: string, malware=defaultMalware) {
+    // ns.print(`Infecting: ${host}`);
     
     // TODO: If the script and params are exactly the same, do not kill
     const currentTarget = running.get(host);
@@ -145,8 +153,8 @@ async function infect(ns: NS, host: string, target: string, malware='/malware/mo
     ns.exec(malware, host, numThreads, target);
 }
 
-function getNumExecutableThreads(ns: NS, host: string, malware: string) {
-    return Math.trunc((ns.getServerMaxRam(host) - ns.getServerUsedRam(host)) / ns.getScriptRam(malware));
+function getNumExecutableThreads(ns: NS, host: string, malware: string, reservedRam=0) {
+    return Math.trunc((ns.getServerMaxRam(host) - ns.getServerUsedRam(host) - reservedRam) / ns.getScriptRam(malware));
 }
 
 function isHackable(ns: NS, host: string) {
