@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { Gang } from "/gang/gang";
+import { Gang } from "gang/gang/gang";
 
 
 /** @param {NS} ns */
