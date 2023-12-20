@@ -1,11 +1,17 @@
 import { NS } from "@ns";
-import { Member } from "gang/member/member";
 import { NSContainer } from "/lib/ns_container";
+import { Member } from "gang/member/member";
 import { Task } from "/gang/tasks/task";
+import { calculateApproximateMoneyGain } from "/gang/lib/helpers"
+import { failRecruit, nullTask } from "gang/lib/error_messages";
+import { Warrior } from "gang/member/warrior";
 
 
 export class Gang extends NSContainer {
+    // NS-related
     gang: NS["gang"]
+
+    // Gang-related
     members: Array<Member>
 
     constructor(ns: NS) {
@@ -16,30 +22,47 @@ export class Gang extends NSContainer {
 
     init(): Gang {
         const names = this.ns.gang.getMemberNames();
+        // TODO: Read roles
+        // const savedNames = new Map<string, string>()
         for (const name of names) {
-            this.createMember(name);
+            const role = this.chooseRole()
+            // let role = this.chooseRole()
+            // if (savedNames.has(name)) {
+            //     role = savedNames.get(name)
+            // }
+            this.initiateMember(name, role);
         }
         return this;
     }
 
+    // Info-related
     getInfo() {
         return this.gang.getGangInformation()
     }
 
-    addMember(member: Member): void {
+    // Member-related
+    initiateMember<MemberRole extends Member>(name: string, memberRole: new (ns: NS, name: string) => MemberRole): void {
+        const member = new memberRole(this.ns, name)
         this.members.push(member)
     }
 
-    createMember(name: string): void {
-        this.addMember(new Member(this.ns, name));
+    recruitMember(): void {
+        const currNumMembers = this.gang.getMemberNames().length
+        
+        const name = `Member-${currNumMembers}`
+        const success = this.gang.recruitMember(name)
+        if (!success) throw new Error(failRecruit())
+
+        this.initiateMember(name, this.chooseRole())
     }
 
-    recruitMember(): boolean {
-        return this.gang.recruitMember('PLACEHOLDER')
+    chooseRole() {
+        return Warrior // Placeholder
     }
 
+    // Task-related
     taskMember(member: Member, task: Task): void {
-        member.execTask(task);
+        member.performTask(task);
     }
 
     taskAllMembers(task: Task): void {
@@ -48,17 +71,43 @@ export class Gang extends NSContainer {
         }
     }
 
-    execMember(member: Member): void {
-        member.execTask(member.bestTask())
+    taskMemberBestTask(member: Member): void {
+        if (member.requireTraining()) {
+            member.train()
+            return
+        }
+        const task = this.getHighestIncomeTask(member);
+        this.taskMember(member, task);
     }
 
-    execAllMembers(): void {
+    taskAllMembersBestTask(): void {
         for (const member of this.members) {
-            member.execTask(member.bestTask())
-
+            this.taskMemberBestTask(member);
         }
     }
 
+    // Helpers
+    getHighestIncomeTask(member: Member): Task {
+        let highestIncomeValue = 0.0; 
+        let highestIncomeTask: Task | undefined;
+        for (const task of member.validTasks) {
+            const taskIncomeValue = calculateApproximateMoneyGain(this.ns, this, member, task)
+            if (taskIncomeValue < highestIncomeValue) {
+                continue;
+            }
+            highestIncomeTask = task;
+            highestIncomeValue = taskIncomeValue;
+        }
+        if (highestIncomeTask === undefined) throw new Error(nullTask());
+        return highestIncomeTask
+    }
+
+    // Ascension-related
+    ascendMember(member: Member): void {
+        return
+    }
+
+    // Upgrade related
     upgradeGang(): void {
         return
     }

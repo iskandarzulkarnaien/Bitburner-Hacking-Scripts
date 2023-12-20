@@ -10,6 +10,14 @@ export abstract class Task extends NSContainer {
         this.name = name;
     }
 
+    toString(): string {
+        return this.name
+    }
+
+    equals(other: Task): boolean {
+        return this.name === other.name
+    }
+
     getTaskStats() {
         return this.ns.gang.getTaskStats(this.name)
     }

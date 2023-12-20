@@ -43,7 +43,14 @@ function calculateWantedPenalty(gangInfo: GangGenInfo): number {
 
 
 function calculateTerritoryPenalty(ns: NS, gangInfo: GangGenInfo) {
-    return (0.2 * gangInfo.territory + 0.8) * ns.getBitNodeMultipliers().GangSoftcap;
+    let territoryPenalty = 0.2 * gangInfo.territory + 0.8;
+
+    try {
+        territoryPenalty *= ns.getBitNodeMultipliers().GangSoftcap
+    } finally {
+        // eslint-disable-next-line no-unsafe-finally
+        return territoryPenalty
+    }
 }
 
 

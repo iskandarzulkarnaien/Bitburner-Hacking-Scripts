@@ -1,12 +1,18 @@
 import { Gang, GangMemberInfo, NS } from "@ns";
 import { NSContainer } from "/lib/ns_container";
 import { Task } from "/gang/tasks/task";
-import { CombatTask } from "/gang/tasks/combat_task";
-import { TrainingTask } from "/gang/tasks/training_task";
+import { Stats } from "/gang/stats/enum_stats";
+import { invalidTask } from "gang/lib/error_messages";
 
-export class Member extends NSContainer {
+export abstract class Member extends NSContainer {
+    // NS-related
     gang: Gang;
+
+    // Member-related
     name: string;
+    abstract validTasks: Array<Task>;
+    abstract mainStats: Array<Stats>;
+    static trainingThreshold = 75;
 
     constructor(ns: NS, name: string) {
         super(ns);
@@ -18,50 +24,38 @@ export class Member extends NSContainer {
         return this.gang.getMemberInformation(this.name);
     }
 
-    execTask(task: Task): void {
+    performTask(task: Task): void {
+        if (!this.validTasks.find((validTask) => validTask.equals(task))) throw new Error(invalidTask(task, this.validTasks))
         this.gang.setMemberTask(this.name, task.name);
     }
 
-    bestTask(): Task {
-        const combatStats = this.getCombatStats()
-        const checkThreshold = (threshold: number) => combatStats.every((stat) => stat < threshold)
-
-        const baseThreshold = 75
-        const thresholdMult = this.getAvgCombatMultiplier()
-        const finalThreshold = baseThreshold * thresholdMult
-
-        if (checkThreshold(finalThreshold)) {
-            return TrainingTask.trainCombat(this.ns)
-        } else if (checkThreshold(finalThreshold * 2)) {
-            return CombatTask.mugPeople(this.ns)
-        } else if (checkThreshold(finalThreshold * 3)) {
-            return CombatTask.dealDrugs(this.ns)
-        } else if (checkThreshold(finalThreshold * 4)) {
-            return CombatTask.strongarmCivilians(this.ns)
-        } else if (checkThreshold(finalThreshold * 5)) {
-            return CombatTask.runACon(this.ns)
-        } else if (checkThreshold(finalThreshold * 6)) {
-            return CombatTask.armedRobbery(this.ns)
-        } else if (checkThreshold(finalThreshold * 7)) {
-            return CombatTask.traffickIllegalArms(this.ns)
-        } else if (checkThreshold(finalThreshold * 8)) {
-            return CombatTask.threatenAndBlackmail(this.ns)
-        } else if (checkThreshold(finalThreshold * 9)) {
-            return CombatTask.humanTrafficking(this.ns)
-        } else {
-            return CombatTask.terrorism(this.ns)
+    requireTraining(): boolean {
+        const currStats = new Map<Stats, number>();
+        for (const stat of this.mainStats) {
+            const statLevel = this.getMemberInfo()[stat]
+            // this.ns.print(statLevel)
+            currStats.set(stat, statLevel)
         }
+
+        // We use min to ensure training time is capped by weakest skill
+        const minAscensionMultiplier = Math.min(...this.getMainStatsAscensionMultipliers().values())
+        const trainLevelCap = Member.trainingThreshold * minAscensionMultiplier
+
+        const currStatsLevels = Array.from(currStats).map(([stat, level]) => level)
+        const requireTraining = currStatsLevels.some((currLevel) => currLevel < trainLevelCap)
+        this.ns.print(currStatsLevels)
+        this.ns.print(`Member: ${this.name} | Stats: ${Array.from(currStats)} | LevelCap: ${trainLevelCap} | Train? ${requireTraining}`)
+        return requireTraining 
     }
 
-    private getAvgCombatMultiplier() {
-        const { str_asc_mult, str_mult, def_asc_mult, def_mult, dex_asc_mult, dex_mult, agi_asc_mult, agi_mult } = this.getMemberInfo()
-        const multipliers = [str_asc_mult, str_mult, def_asc_mult, def_mult, 
-            dex_asc_mult, dex_mult, agi_asc_mult, agi_mult].map((multiplier) => Number(multiplier))
-        return multipliers.reduce((sum, next) => sum + next, 0) / multipliers.length
+    getMainStatsAscensionMultipliers(): Map<Stats, number> {
+        const currMultipliers = new Map<Stats, number>();
+        for (const stat of this.mainStats) {
+            const ascensionMultiplier = this.getMemberInfo()[`${stat}_asc_mult`]
+            currMultipliers.set(stat, ascensionMultiplier)
+        }
+        return currMultipliers
     }
 
-    private getCombatStats() {
-        const { str, def, dex, agi } = this.getMemberInfo()
-        return [str, def, dex, agi].map((stat) => Number(stat))
-    }
+    abstract train(): void;
 }
