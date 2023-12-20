@@ -33,7 +33,6 @@ export abstract class Member extends NSContainer {
         const currStats = new Map<Stats, number>();
         for (const stat of this.mainStats) {
             const statLevel = this.getMemberInfo()[stat]
-            // this.ns.print(statLevel)
             currStats.set(stat, statLevel)
         }
 
@@ -43,8 +42,6 @@ export abstract class Member extends NSContainer {
 
         const currStatsLevels = Array.from(currStats).map(([, level]) => level)
         const requireTraining = currStatsLevels.some((currLevel) => currLevel < trainLevelCap)
-        this.ns.print(currStatsLevels)
-        this.ns.print(`Member: ${this.name} | Stats: ${Array.from(currStats)} | LevelCap: ${trainLevelCap} | Train? ${requireTraining}`)
         return requireTraining 
     }
 
