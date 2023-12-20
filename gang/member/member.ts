@@ -41,7 +41,7 @@ export abstract class Member extends NSContainer {
         const minAscensionMultiplier = Math.min(...this.getMainStatsAscensionMultipliers().values())
         const trainLevelCap = Member.trainingThreshold * minAscensionMultiplier
 
-        const currStatsLevels = Array.from(currStats).map(([stat, level]) => level)
+        const currStatsLevels = Array.from(currStats).map(([, level]) => level)
         const requireTraining = currStatsLevels.some((currLevel) => currLevel < trainLevelCap)
         this.ns.print(currStatsLevels)
         this.ns.print(`Member: ${this.name} | Stats: ${Array.from(currStats)} | LevelCap: ${trainLevelCap} | Train? ${requireTraining}`)
