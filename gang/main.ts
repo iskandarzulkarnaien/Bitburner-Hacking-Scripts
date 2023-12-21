@@ -6,6 +6,8 @@ import { Gang } from "gang/gang/gang";
 export async function main(ns: NS) {
     ns.disableLog('ALL')
 
+    ns.tail()
+
     // Load all existing members
     const gang = new Gang(ns).init();
 
