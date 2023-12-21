@@ -3,7 +3,7 @@ import { NSContainer } from "/lib/ns_container";
 import { Member } from "gang/member/member";
 import { Task } from "/gang/tasks/task";
 import { calculateApproximateMoneyGain } from "/gang/lib/helpers"
-import { failRecruit, nullTask } from "gang/lib/error_messages";
+import { memberNotfound, nullTask } from "gang/lib/error_messages";
 import { Warrior } from "gang/member/warrior";
 
 
@@ -41,8 +41,8 @@ export class Gang extends NSContainer {
     }
 
     // Member-related
-    initiateMember<MemberRole extends Member>(name: string, memberRole: new (ns: NS, name: string) => MemberRole): void {
-        const member = new memberRole(this.ns, name)
+    initiateMember<MemberRole extends Member>(name: string, Role: new (ns: NS, name: string) => MemberRole): void {
+        const member = new Role(this.ns, name)
         this.members.push(member)
     }
 
@@ -59,8 +59,15 @@ export class Gang extends NSContainer {
         return success
     }
 
-    chooseRole() {
+    chooseRole(): new (ns: NS, name: string) => Member {
         return Warrior // Placeholder
+    }
+
+    switchRole<MemberRole extends Member>(member: Member, Role: new (ns: NS, name: string) => MemberRole): void {
+        const memberIndex = this.members.findIndex((currMember) => currMember.equals(member))
+        if (memberIndex === -1) throw new Error(memberNotfound(member, this.members))
+
+        this.members[memberIndex] = member.roleSwap(Role)
     }
 
     // Task-related

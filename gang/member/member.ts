@@ -10,16 +10,28 @@ export abstract class Member extends NSContainer {
 
     // Member-related
     name: string;
+
+    // Miscellaneous
     abstract validTasks: Array<Task>;
     abstract mainStats: Array<Stats>;
 
     static trainingLevelThreshold = 35;  // 35 -> Reasonable | 50 -> Possible, but slow | 75 -> Too slow
     static ascensionFactorThreshold = 1.10;
 
+    numAscensions = 0;  // TODO: This will not be accurate until we setup file-storage of data
+
     constructor(ns: NS, name: string) {
         super(ns);
         this.gang = ns.gang;
         this.name = name;
+    }
+
+    roleSwap<MemberRole extends Member>(Role: new (ns: NS, name: string) => MemberRole): Member {
+        return new Role(this.ns, this.name)
+    }
+
+    equals(other: Member): boolean {
+        return this.name === other.name
     }
 
     toString(): string {
@@ -65,7 +77,11 @@ export abstract class Member extends NSContainer {
 
     performAscension(): void {
         if (!this.ascensionEligible()) throw new Error(ineligibleAscension(this))
-        this.gang.ascendMember(this.name)
+        
+        const ascensionResults = this.gang.ascendMember(this.name)
+        if (!ascensionResults) return
+
+        this.numAscensions += 1
     }
 
     getMainStatsAscensionMultipliers(): Map<Stats, number> {
