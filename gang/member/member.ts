@@ -15,8 +15,8 @@ export abstract class Member extends NSContainer {
     abstract validTasks: Array<Task>;
     abstract mainStats: Array<Stats>;
 
-    static trainingLevelThreshold = 35;  // 35 -> Reasonable | 50 -> Possible, but slow | 75 -> Too slow
-    static ascensionFactorThreshold = 1.10;
+    static trainingLevelThreshold = 90;
+    static ascensionFactorThreshold = 1.5;
 
     numAscensions = 0;  // TODO: This will not be accurate until we setup file-storage of data
 
@@ -24,10 +24,6 @@ export abstract class Member extends NSContainer {
         super(ns);
         this.gang = ns.gang;
         this.name = name;
-    }
-
-    roleSwap<MemberRole extends Member>(Role: new (ns: NS, name: string) => MemberRole): Member {
-        return new Role(this.ns, this.name)
     }
 
     equals(other: Member): boolean {
@@ -40,6 +36,10 @@ export abstract class Member extends NSContainer {
 
     getMemberInfo(): GangMemberInfo {
         return this.gang.getMemberInformation(this.name);
+    }
+
+    roleSwap<MemberRole extends Member>(Role: new (ns: NS, name: string) => MemberRole): Member {
+        return new Role(this.ns, this.name)
     }
 
     performTask(task: Task): void {
@@ -113,6 +113,7 @@ export abstract class Member extends NSContainer {
         return false
     }
 
+    // Ascension-related
     ascensionEligible(): boolean {
         const ascensionStatsFactors = this.gang.getAscensionResult(this.name)
         if (!ascensionStatsFactors) return false
@@ -130,7 +131,7 @@ export abstract class Member extends NSContainer {
         
         const ascensionResults = this.gang.ascendMember(this.name)
         if (!ascensionResults) return
-
+        
         this.numAscensions += 1
     }
 
@@ -145,5 +146,9 @@ export abstract class Member extends NSContainer {
         return currMultipliers
     }
 
-    abstract train(): void;
+    getMainStatsNextAscensionMultipliers(): Map<Stats, number> {
+        const nextAscensionMultipliers = this.getMainStatsAscensionMultipliers()
+        nextAscensionMultipliers.forEach((value: number, stat: Stats) => nextAscensionMultipliers.set(stat, value * Member.ascensionFactorThreshold))
+        return nextAscensionMultipliers
+    }
 }

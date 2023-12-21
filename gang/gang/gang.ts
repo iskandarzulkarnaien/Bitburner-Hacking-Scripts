@@ -100,12 +100,27 @@ export class Gang extends NSContainer {
 
     // Ascension-related
     ascendMember(member: Member): void {
-        // TODO: Factor in respect lost during ascension. May need to balance ascensions and recruitment.
-        if (!member.ascensionEligible()) {
-            return
-        }
-        this.ns.print(`Successfully ascended member: ${member}`)
+        if (!this.getAscensionRespectEligibility(member) || !member.ascensionEligible()) return
+        this.ascendWithLog(member)
+    }
+
+    private ascendWithLog(member: Member): void {
+        const currAscensionMultipliers = member.getMainStatsAscensionMultipliers()
+
         member.performAscension()
+
+        const nextAscensionMultipliers = member.getMainStatsNextAscensionMultipliers()
+
+        const precision = 2
+        const multStrings = new Array<string>()
+        for (const stat of member.mainStats) {
+            const currMult = currAscensionMultipliers.get(stat)?.toFixed(precision)
+            const nextMult = nextAscensionMultipliers.get(stat)?.toFixed(precision)
+            const multString = `${stat}: (${currMult}, ${nextMult})`
+            multStrings.push(multString)
+        }
+
+        this.ns.print(`Successful Ascension for ${member} - (Prev, Next) stats: ${multStrings.join(' | ')}`)
     }
 
     ascendGang(): void {
