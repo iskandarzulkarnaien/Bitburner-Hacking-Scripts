@@ -11,7 +11,9 @@ export async function main(ns: NS) {
     // eslint-disable-next-line no-constant-condition
     while (true) {
         ns.disableLog('ALL')
+        gang.recruitMember()
         gang.taskAllMembersBestTask()
+        gang.ascendGang()
         gang.upgradeGang()
         await ns.gang.nextUpdate()
     }

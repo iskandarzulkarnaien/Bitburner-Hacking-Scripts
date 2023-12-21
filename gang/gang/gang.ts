@@ -46,14 +46,14 @@ export class Gang extends NSContainer {
         this.members.push(member)
     }
 
-    recruitMember(): void {
+    recruitMember(): boolean {
         const currNumMembers = this.gang.getMemberNames().length
         
         const name = `Member-${currNumMembers}`
         const success = this.gang.recruitMember(name)
-        if (!success) throw new Error(failRecruit())
-
-        this.initiateMember(name, this.chooseRole())
+        
+        if (success) this.initiateMember(name, this.chooseRole())
+        return success
     }
 
     chooseRole() {
@@ -86,6 +86,27 @@ export class Gang extends NSContainer {
         }
     }
 
+    // Ascension-related
+    ascendMember(member: Member): void {
+        // TODO: Factor in respect lost during ascension. May need to balance ascensions and recruitment.
+        if (!member.ascensionEligible()) {
+            return
+        }
+        this.ns.print(`Successfully ascended member: ${member.name}`)
+        member.performAscension()
+    }
+
+    ascendGang(): void {
+        for (const member of this.members) {
+            this.ascendMember(member)
+        }
+    }
+
+    // Upgrade related
+    upgradeGang(): void {
+        return
+    }
+
     // Helpers
     getHighestIncomeTask(member: Member): Task {
         let highestIncomeValue = 0.0; 
@@ -100,15 +121,5 @@ export class Gang extends NSContainer {
         }
         if (highestIncomeTask === undefined) throw new Error(nullTask());
         return highestIncomeTask
-    }
-
-    // Ascension-related
-    ascendMember(member: Member): void {
-        return
-    }
-
-    // Upgrade related
-    upgradeGang(): void {
-        return
     }
 }
