@@ -2,7 +2,8 @@ import { Gang, GangMemberInfo, NS } from "@ns";
 import { NSContainer } from "/lib/ns_container";
 import { Task } from "/gang/tasks/task";
 import { Stats } from "/gang/stats/enum_stats";
-import { ineligibleAscension, invalidTask, statNotFound, unreachableConditionalPathReached } from "gang/lib/error_messages";
+import { ineligibleAscension, invalidTask, statNotFound } from "gang/lib/error_messages";
+import { unreachableConditionalPathReached } from "/lib/error_messages";
 
 export abstract class Member extends NSContainer {
     // NS-related
