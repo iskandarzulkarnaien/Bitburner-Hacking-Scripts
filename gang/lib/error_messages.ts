@@ -16,6 +16,3 @@ export const invalidTask = (task: Task, validTasks: Array<Task>) => `Invalid tas
 
 // Ascension-related
 export const ineligibleAscension = (member: Member) => `${member} isn't eligible for ascension`
-
-// Miscellaneous
-export const unreachableConditionalPathReached = () => 'Conditional evaluated to invalid path'
