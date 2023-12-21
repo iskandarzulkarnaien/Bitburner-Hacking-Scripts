@@ -14,6 +14,8 @@ export class Gang extends NSContainer {
     // Gang-related
     members: Array<Member>
 
+    respectLostAscensionThreshold = 0.5  // Respect lost from ascension will never be more than this factor of total respect
+
     constructor(ns: NS) {
         super(ns);
         this.gang = ns.gang
@@ -131,5 +133,11 @@ export class Gang extends NSContainer {
         }
         if (highestIncomeTask === undefined) throw new Error(nullTask());
         return highestIncomeTask
+    }
+
+    private getAscensionRespectEligibility(member: Member): boolean {
+        const gangRespect = this.getInfo().respect
+        const memberRespect = member.getMemberInfo().earnedRespect
+        return  memberRespect / gangRespect < this.respectLostAscensionThreshold
     }
 }
