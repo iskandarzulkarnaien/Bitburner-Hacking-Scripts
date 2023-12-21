@@ -4,13 +4,14 @@ import { Gang } from "gang/gang/gang";
 
 /** @param {NS} ns */
 export async function main(ns: NS) {
+    ns.disableLog('ALL')
+
     // Load all existing members
     const gang = new Gang(ns).init();
 
     // Perform actions
     // eslint-disable-next-line no-constant-condition
     while (true) {
-        ns.disableLog('ALL')
         gang.recruitMember()
         gang.taskAllMembersBestTask()
         gang.ascendGang()
