@@ -5,6 +5,7 @@ import { Task } from "/gang/tasks/task";
 import { calculateApproximateMoneyGain } from "/gang/lib/helpers"
 import { memberNotfound, nullTask } from "gang/lib/error_messages";
 import { Warrior } from "gang/member/warrior";
+import { applyPadding } from "/lib/helpers";
 
 
 export class Gang extends NSContainer {
@@ -34,7 +35,15 @@ export class Gang extends NSContainer {
             // }
             this.initiateMember(name, role);
         }
+        this.initLog()
         return this;
+    }
+
+    private initLog(): void {
+        const faction = this.gang.getGangInformation().faction
+        const numMembers = this.members.length
+        const members = this.members.map((member) => `${member} - ${member.getRole()} rank ${member.getAscensionRank()}`).map(applyPadding).join("\n")
+        this.ns.print(`Initialized ${faction} gang with ${numMembers} members:\n${members}`)
     }
 
     // Info-related

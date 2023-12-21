@@ -34,14 +34,21 @@ export abstract class Member extends NSContainer {
         return this.name
     }
 
+    // Info-related
     getMemberInfo(): GangMemberInfo {
         return this.gang.getMemberInformation(this.name);
+    }
+
+    // Role-related
+    getRole(): string {
+        return this.constructor.name
     }
 
     roleSwap<MemberRole extends Member>(Role: new (ns: NS, name: string) => MemberRole): Member {
         return new Role(this.ns, this.name)
     }
 
+    // Task-related
     performTask(task: Task): void {
         if (!this.validTasks.find((validTask) => validTask.equals(task))) throw new Error(invalidTask(task, this.validTasks))
         this.gang.setMemberTask(this.name, task.name);
@@ -133,6 +140,12 @@ export abstract class Member extends NSContainer {
         if (!ascensionResults) return
         
         this.numAscensions += 1
+    }
+
+    // Rank is defined as average of main stats
+    getAscensionRank(): string {
+        const multipliers = Array.from(this.getMainStatsAscensionMultipliers().values())
+        return (multipliers.reduce((sum, value) => sum + value, 0) / multipliers.length).toFixed(0)
     }
 
     getMainStatsAscensionMultipliers(): Map<Stats, number> {

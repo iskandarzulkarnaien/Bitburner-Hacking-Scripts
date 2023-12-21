@@ -35,8 +35,7 @@ export function applyPadding(str: string) {
     return `${getPadding()}${str}`
 }
 
-const timestampPadding = 16 + 1 // Format: "[MM-dd HH:mm:ss]" 16 char + 1 whitespace
 const defaultPadding = 4
-export function getPadding(numSpaces = timestampPadding + defaultPadding) {
+export function getPadding(numSpaces = defaultPadding) {
     return " ".repeat(numSpaces) 
 }
