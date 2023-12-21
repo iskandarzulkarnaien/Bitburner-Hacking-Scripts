@@ -52,7 +52,10 @@ export class Gang extends NSContainer {
         const name = `Member-${currNumMembers}`
         const success = this.gang.recruitMember(name)
         
-        if (success) this.initiateMember(name, this.chooseRole())
+        if (success) {
+            this.initiateMember(name, this.chooseRole())
+            this.ns.print(`Successfully recruited ${name}`)
+        }
         return success
     }
 
