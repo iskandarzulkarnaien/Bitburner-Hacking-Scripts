@@ -2,7 +2,7 @@ import { Gang, GangMemberInfo, NS } from "@ns";
 import { NSContainer } from "/lib/ns_container";
 import { Task } from "/gang/tasks/task";
 import { Stats } from "/gang/stats/enum_stats";
-import { ineligibleAscension, invalidTask } from "gang/lib/error_messages";
+import { ineligibleAscension, invalidTask, statNotFound, unreachableConditionalPathReached } from "gang/lib/error_messages";
 
 export abstract class Member extends NSContainer {
     // NS-related
@@ -47,6 +47,9 @@ export abstract class Member extends NSContainer {
         this.gang.setMemberTask(this.name, task.name);
     }
 
+    // Training-related
+    abstract train(): void;
+
     requireTraining(): boolean {
         const currStats = new Map<Stats, number>();
         for (const stat of this.mainStats) {
@@ -54,13 +57,60 @@ export abstract class Member extends NSContainer {
             currStats.set(stat, statLevel)
         }
 
-        // We use min to ensure training time is capped by weakest skill
-        const minAscensionMultiplier = Math.min(...this.getMainStatsAscensionMultipliers().values())
-        const trainLevelCap = Member.trainingLevelThreshold * minAscensionMultiplier
+        const checker = this.getTrainingChecker()
+        if (checker === this.exactTrainingChecker) {
+            return this.exactTrainingChecker(currStats)
+        }
 
         const currStatsLevels = Array.from(currStats).map(([, level]) => level)
-        const requireTraining = currStatsLevels.some((currLevel) => currLevel < trainLevelCap)
-        return requireTraining 
+        return (checker as (currStatsLevels: Array<number>) => boolean)(currStatsLevels)  // TODO: find a better way to express this
+    }
+
+    private getTrainingChecker(which = 'exact') {
+        switch (which) {
+            case 'min':
+                return this.minTrainingChecker
+            case 'max':
+                return this.maxTrainingChecker
+            case 'avg':
+                return this.avgTrainingChecker
+            case 'exact':
+                return this.exactTrainingChecker
+            default:
+                throw new Error(unreachableConditionalPathReached())
+        }
+    }
+
+    private minTrainingChecker(currStatsLevels: Array<number>): boolean {
+        // Caps training time by weakest skill
+        const minAscensionMultiplier = Math.min(...this.getMainStatsAscensionMultipliers().values())
+        const trainLevelCap = Member.trainingLevelThreshold * minAscensionMultiplier
+        return currStatsLevels.some((currLevel) => currLevel < trainLevelCap)
+    }
+
+    private maxTrainingChecker(currStatsLevels: Array<number>): boolean {
+        // Ensures training to the highest quality
+        const maxAscensionMultiplier = Math.max(...this.getMainStatsAscensionMultipliers().values())
+        const trainLevelCap = Member.trainingLevelThreshold * maxAscensionMultiplier
+        return currStatsLevels.some((currLevel) => currLevel < trainLevelCap)
+    }
+
+    private avgTrainingChecker(currStatsLevels: Array<number>): boolean {
+        // Balanced approach
+        const multiplierValues = Array.from(this.getMainStatsAscensionMultipliers().values())
+        const avgAscensionMultiplier = multiplierValues.reduce((total, currMultiplier) => total + currMultiplier) / multiplierValues.length
+        const trainLevelCap = Member.trainingLevelThreshold * avgAscensionMultiplier
+        return currStatsLevels.some((currLevel) => currLevel < trainLevelCap)
+    }
+
+    private exactTrainingChecker(currStats: Map<Stats, number>): boolean {
+        const ascensionMultipliers = this.getMainStatsAscensionMultipliers()
+        for (const [stat, currLevel] of currStats) {
+            const statMultiplier = ascensionMultipliers.get(stat)
+            if (!statMultiplier) throw new Error(statNotFound(stat, this))
+            if (currLevel < Member.trainingLevelThreshold * statMultiplier) return true
+        }
+        return false
     }
 
     ascensionEligible(): boolean {
