@@ -95,7 +95,7 @@ export class Gang extends NSContainer {
         if (!member.ascensionEligible()) {
             return
         }
-        this.ns.print(`Successfully ascended member: ${member.name}`)
+        this.ns.print(`Successfully ascended member: ${member}`)
         member.performAscension()
     }
 

@@ -9,4 +9,4 @@ export const nullTask = () => "No tasks found"
 export const invalidTask = (task: Task, validTasks: Array<Task>) => `Invalid task - ${task}. Valid tasks are: ${validTasks.join(' | ')}`
 
 // Ascension-related
-export const ineligibleAscension = (member: Member) => `${member.name} isn't eligible for ascension`
+export const ineligibleAscension = (member: Member) => `${member} isn't eligible for ascension`

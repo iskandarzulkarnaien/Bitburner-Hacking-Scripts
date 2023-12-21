@@ -22,6 +22,10 @@ export abstract class Member extends NSContainer {
         this.name = name;
     }
 
+    toString(): string {
+        return this.name
+    }
+
     getMemberInfo(): GangMemberInfo {
         return this.gang.getMemberInformation(this.name);
     }
