@@ -44,3 +44,12 @@ export function getRandomArrayElement<T>(arr: Array<T>): T {
     return arr[Math.floor(Math.random() * arr.length)]
 }
 
+// This helper makes it easier for my brain to reason with percentages
+export function chanceToAppear(percentage: number | string): boolean {
+    if (typeof percentage === "string") {
+        // Regex to check that percentage is in format: n%
+        if (!/^\d+%$/.test(percentage)) throw new Error(`String of value '${percentage}' is not a valid percentage in format 'n%'`)
+        percentage = Number(percentage.slice(0, percentage.length - 1))
+    }
+    return Math.random() < percentage / 100;
+}
