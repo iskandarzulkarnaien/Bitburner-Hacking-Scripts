@@ -39,3 +39,8 @@ const defaultPadding = 4
 export function getPadding(numSpaces = defaultPadding) {
     return " ".repeat(numSpaces) 
 }
+
+export function getRandomArrayElement<T>(arr: Array<T>): T {
+    return arr[Math.floor(Math.random() * arr.length)]
+}
+
